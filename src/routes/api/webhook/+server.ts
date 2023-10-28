@@ -1,12 +1,15 @@
-import type Stripe from "stripe";
-import { db } from "$lib/db.server";
-import { STRIPE_WEBHOOK } from "$env/static/private";
-import { stripe } from "$lib/stripe";
-import { json } from "@sveltejs/kit";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type Stripe from 'stripe';
+import { STRIPE_WEBHOOK } from '$env/static/private';
+import { stripe } from '$lib/stripe';
+import { json } from '@sveltejs/kit';
+import { db } from '$lib/db';
+import { users } from '$lib/db/schema';
+import { getUserData } from '$lib/helpers.js';
 
 export const POST = async ({ request }) => {
 	const body = await request.text();
-	const signature = request.headers.get("Stripe-Signature") as string;
+	const signature = request.headers.get('Stripe-Signature') as string;
 
 	let event: Stripe.Event;
 
@@ -22,26 +25,22 @@ export const POST = async ({ request }) => {
 	const email = session?.metadata?.email;
 	const credits_to_purchase = session?.metadata?.credits_to_purchase;
 
-	if (event.type === "checkout.session.completed") {
+	if (event.type === 'checkout.session.completed') {
 		if (!email || !credits_to_purchase) {
 			return json(
-				{ error: "No user data provided" },
+				{ error: 'No user data provided' },
 				{
-					status: 400,
-				},
+					status: 400
+				}
 			);
 		}
 
-		await db.user.update({
-			where: {
-				email,
-			},
-			data: {
-				credits: {
-					increment: Number(credits_to_purchase),
-				},
-			},
+		const [userData] = await getUserData(email);
+
+		await db.update(users).set({
+			credits: (userData.credits as number) + Number(credits_to_purchase)
 		});
+
 		console.log(`User ${email} purchased ${credits_to_purchase} credits`);
 	} else {
 		return json({ error: `Invalid event type ${event.type}` }, { status: 200 });

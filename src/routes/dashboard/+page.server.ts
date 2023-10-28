@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { db } from '$lib/db';
 import { eq } from 'drizzle-orm';
 import { users } from '$lib/db/schema';
+import { getUserData } from '$lib/helpers';
 
 const openai = new OpenAI({
 	apiKey: OPENAI_API_KEY
@@ -14,9 +15,6 @@ const openai = new OpenAI({
 
 export const config = {
 	runtime: 'edge'
-};
-const getUserData = async (email: string) => {
-	return await db.select().from(users).where(eq(users.email, email)).limit(1);
 };
 
 enum Resolution {
